@@ -19,3 +19,19 @@ Use the R package `devtools` to install:
 devtools::install_github("Xiaoyang-Wu/PASS")  
 library(PASS)
 ```
+
+# Notes on usage of the PASS package
+For direct implementation of the method, just use the `PASS_sampling` function in the package and all arguments needed can be found in the help documentation `?PASS_sampling`.  
+Note that the `algo` argument is of type `class` and should be defined by the user depending on the specific fitting and predicting algorithm chosen. Here is an example for the definition of the algorithm class:
+```
+#SVM regression  
+setClass("SVM-R", slots = list(name = "character"),  
+         prototype = list(name = "SVM-R"))  
+setMethod("fitting", "SVM-R", function(obj, X, Y, lambda){  
+  datawork <- data.frame(X, y = Y)  
+  ksvm(y~., data = datawork, C = lambda)  
+})  
+setMethod("Pred", "SVM-R", function(obj, model, X_test, type = "decision"){  
+  predict(model, X_test)  
+})
+```

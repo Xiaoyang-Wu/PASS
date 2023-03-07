@@ -31,7 +31,8 @@ setMethod("fitting", "SVM-R", function(obj, X, Y, lambda){
   datawork <- data.frame(X, y = Y)  
   ksvm(y~., data = datawork, C = lambda)  
 })  
-setMethod("Pred", "SVM-R", function(obj, model, X_test, type = "decision"){  
+setMethod("Pred", "SVM-R", function(obj, model, X_test){  
   predict(model, X_test)  
 })
 ```
+The function `fitting` should take the algorithm class object, a covariate matrix, the corresponding response vector and optionally a tuning parameter as inputs and outputs a model object. The function `Pred` should take the algorithm class object, the fitted model object and a new covariate matrix as inputs and outputs a vector or prediction values.

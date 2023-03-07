@@ -14,6 +14,6 @@ much as possible. The key ingredients of our method are the use of predictive in
 - **Real-data**: Codes for reproducing the real-data experiment and the data set used.
 
 # How to install the PASS package
-Use the R package `devtools` to install:
+Use the R package `devtools` to install:  
         devtools::install_github("Xiaoyang-Wu/PASS")  
         library(PASS)

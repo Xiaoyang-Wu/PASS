@@ -33,6 +33,8 @@ setMethod("fitting", "SVM-R", function(obj, X, Y, lambda){
 })  
 setMethod("Pred", "SVM-R", function(obj, model, X_test){  
   predict(model, X_test)  
-})
+})  
+algo <- new('SVM-R')  
+Sampling_results <- PASS_sampling(..., algo = algo, ...)
 ```
 The function `fitting` should take the algorithm class object, a covariate matrix, the corresponding response vector and optionally a tuning parameter as inputs and outputs a model object. The function `Pred` should take the algorithm class object, the fitted model object and a new covariate matrix as inputs and outputs a vector or prediction values.

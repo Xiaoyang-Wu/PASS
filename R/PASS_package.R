@@ -156,7 +156,7 @@ PASS_sampling <- function(X_label, Y_label, X_test, Null_label, g = "RBF", m, al
     Pi_recover_cv <- rep(0, N)
     Pi_recover_cv[Screened_cv] <- Pi_cv
     Sampled_cv <- sample(1:N, m, replace = TRUE, Pi_recover_cv)
-    return(list(prob = Pi_cv, Indices = Sampled_Cv))
+    return(list(prob = Pi_cv, Indices = Sampled_cv))
   }else{
     TrainIndex <- sample(1:n, floor(n/2))
     data_label <- data.frame(x = X_label, y = Y_label)

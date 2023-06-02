@@ -25,6 +25,11 @@ For direct implementation of the method, just use the `PASS_sampling` function i
 Note that the `algo` argument is of type `class` and should be defined by the user depending on the specific fitting and predicting algorithm chosen. Here is an example for the definition of the algorithm class:
 ```
 library(PASS)
+library(MASS)
+library(randomForest)
+
+setGeneric("fitting", function(obj, ...) standardGeneric("fitting"))
+setGeneric("Pred", function(obj, ...) standardGeneric("pred"))
 ###random forest classification
 setClass("RFc", slots = list(name = "character"), prototype = list(name = "RFc"))
 setMethod("fitting", "RFc", function(obj, X_rest, Y_rest, lambda){

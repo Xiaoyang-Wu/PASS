@@ -22,32 +22,40 @@ K <- 5 ### number of folds for PASSC
 n_train <- round(n/2) ### training set size for single splitting
 n_cal <- n-n_train ### calibration set size for single splitting
 d <- 4 ### dimension of covariates
-algoarray <- c(new('NN-R'), new("RF"), new('SVM-R')) ### algorithms used for fitting and prediction
-lambda <- 500 ### hyper-parameter used for different algorithms
+sgm <- 1 ### sigma value of the RBF criterion
+algoarray <- c(new('RF'), new('SVM-R'), new('NN-R')) ### algorithms used for fitting and prediction
+lambda <- 500 ### numbner of trees
 m <- 200 ### sampling budget
 g <- 'RBF' ### similarity criterion, RBF or COS
-ns <- 100 ### time of replications
+ns <- 120 ### time of replications
+
+
+### determining the region A
+X <- matrix(runif((n+N)*d, -1, 1), nrow = n+N, ncol = d)
+Y <- 3*X[,1]+6*X[,2]^2+7*exp(X[,3]+2*X[,4]^2)+rnorm(n+N, sd = 1)
+l1 <- quantile(Y, 0.1)
+l2 <- quantile(Y, 0.9)
 
 
 cl <- makeCluster(8) ### number of parallel threads
 registerDoParallel(cl)
 Result <- foreach(iter = 1:ns, .combine = "rbind", .packages = c('MASS', 'glmnet', "caret", "kernlab", "randomForest", "ks", "nnet"), .errorhandling = "remove")%dopar% {
-  
+
   info <- data.frame()
-  
-  
+
+
   ### data generation and splitting
   X <- matrix(runif((n+N)*d, -1, 1), nrow = n+N, ncol = d)
-  Y <- 10*X[,1]+7*X[,2]^2+7*exp(X[,3]+2*X[,4]^2)+rnorm(n+N, sd = 1)
+  Y <- 3*X[,1]+6*X[,2]^2+7*exp(X[,3]+2*X[,4]^2)+rnorm(n+N, sd = 1)
   data <- data.frame(x = X, y = Y)
-  Value <- list(type = ">=A&<=B", v = c(quantile(data$y, 0.1), quantile(data$y, 0.9)))
-  
+  Value <- list(type = ">=A&<=B", v = c(l1, l2))
+
   datawork <- DataSplit(data, n+N, N, n_cal)
   data_train <- datawork$data_train
   data_cal <- datawork$data_cal
   data_rest <- datawork$data_rest
   data_test <- datawork$data_test
-  
+
   X_train <- as.matrix(data_train[colnames(data_train)[-d-1]])
   Y_train <- as.matrix(data_train$y)
   X_cal <- as.matrix(data_cal[colnames(data_cal)[-d-1]])
@@ -56,109 +64,113 @@ Result <- foreach(iter = 1:ns, .combine = "rbind", .packages = c('MASS', 'glmnet
   Y_rest <- as.matrix(data_rest$y)
   X_test <- as.matrix(data_test[colnames(data_test)[-d-1]])
   Y_test <- as.matrix(data_test$y)
-  
+
   Null_cal <- NullIndex(data_cal$y, Value)
   Null_rest <- NullIndex(data_rest$y, Value)
   Null_test <- NullIndex(data_test$y, Value)
   Alter_test <- setdiff(1:length(data_test$y), Null_test)
-  
-  
+
+
   ### rescaling the unlabeled covariates and compute the similarity matrix
   X_test_scale <- scale(X_test, center = TRUE, scale = TRUE)
-  S <- Scompute(g, X_test_scale, d)
-  
-  
+
+
   ### implementation via different algorithms
   for (algo in algoarray) {
-    
-    
+
+
     ### model fitting and prediction
     model <- fitting(algo, X_train, Y_train, lambda)
     model_whole <- fitting(algo, X_rest, Y_rest, lambda)
     W_cal <- Pred(algo, model, X_cal)
     W_test <- Pred(algo, model, X_test)
     W_test_whole <- Pred(algo, model_whole, X_test)
-    
-    
+
+
     ### implementation of different methods
     #---PASS---#
     TN <- Tcompute(W_cal, W_test, Null_cal, algo, h1 = 0, h2 = 0)
     Screened <- which(TN<=0.5)
+    S <- Scompute(g, X_test_scale[Screened,], d, sgm = as.numeric(sgm))
     Pi_PASS <- SolvePi(TN, m, S, Screened = Screened, alpha)
     Record_PASS <- CriterionCompute(Pi_PASS, Screened, Null_test, m, S, Retime = 50)
-    
+
     info <- rbind(info, list(
       FDP = Record_PASS$FDP, SIM = Record_PASS$SIM, Method = "PASS", Algorithm = algo@name, datasetting = "REG"
     ))
-    
-    
+
+
     #---PASSC---#
     TN_cv <- KfoldTcompute(X_rest, Y_rest, X_test, Null_rest, W_test_whole, K, lambda, algo, h1 = 0, h2 = 0)
     Screened_cv <- which(TN_cv<=0.5)
-    Pi_PASSC <- SolvePi(TN_cv, m, S, Screened_cv, alpha)
-    Record_PASSC <- CriterionCompute(Pi_PASSC, Screened_cv, Null_test, m, S, Retime = 50)
-    
+    S_cv <- Scompute(g, X_test_scale[Screened_cv,], d, sgm = as.numeric(sgm))
+    Pi_PASSC <- SolvePi(TN_cv, m, S_cv, Screened_cv, alpha)
+    Record_PASSC <- CriterionCompute(Pi_PASSC, Screened_cv, Null_test, m, S_cv, Retime = 50)
+
     info <- rbind(info, list(
       FDP = Record_PASSC$FDP, SIM = Record_PASSC$SIM, Method = "PASSC", Algorithm = algo@name, datasetting = "REG"
     ))
-    
-    
+
+
     #---CP---#
     pval <- confomalPvalue(W_cal, W_test, Null_cal, Value)
     rej <- sort(pval)<((1:N)/N)*alpha
     rejnum <- max(which(rej==T))
     reject <- which(pval<=sort(pval)[rejnum])
+    S_cp <- Scompute(g, X_test_scale[reject,], d, sgm = as.numeric(sgm))
     if(rejnum==-Inf){
-      Record_CP <- data.frame(FDP = 0, SIM = 0)
+      Record_CP <- data.frame(FDP = 0, SIM = NA)
     }else{
-      Record_CP <- CriterionCompute(rep(1/rejnum, rejnum), reject, Null_test, m, S, Retime = 50)
+      Record_CP <- CriterionCompute(rep(1/rejnum, rejnum), reject, Null_test, m, S_cp, Retime = 50)
     }
-    
+
     info <- rbind(info, list(
       FDP = Record_CP$FDP, SIM = Record_CP$SIM, Method = "CP", Algorithm = algo@name, datasetting = "REG"
     ))
-    
-    
+
+
     #---SSD---#
-    Screened_pred <- setdiff(1:N, NullIndex(W_test_whole, Value)) 
-    Pi_SSD <- SolvePi(TN_cv, m, S, Screened_pred, alpha, constraint = FALSE)
-    Record_SSD <- CriterionCompute(Pi_SSD, Screened_pred, Null_test, m, S, Retime = 50)
-    
+    Screened_pred <- setdiff(1:N, NullIndex(W_test_whole, Value))
+    S_pred <- Scompute(g, X_test_scale[Screened_pred,], d, sgm = as.numeric(sgm))
+    Pi_SSD <- SolvePi(TN_cv, m, S_pred, Screened_pred, alpha, constraint = FALSE)
+    Record_SSD <- CriterionCompute(Pi_SSD, Screened_pred, Null_test, m, S_pred, Retime = 50)
+
     info <- rbind(info, list(
       FDP = Record_SSD$FDP, SIM = Record_SSD$SIM, Method = "SSD", Algorithm = algo@name, datasetting = "REG"
     ))
-    
-    
+
+
     #---SS---#
-    Screened_pred <- setdiff(1:N, NullIndex(W_test_whole, Value)) 
+    Screened_pred <- setdiff(1:N, NullIndex(W_test_whole, Value))
     Pi_SS <- rep(1/length(Screened_pred), length(Screened_pred))
-    Record_SS <- CriterionCompute(Pi_SS, Screened_pred, Null_test, m, S, Retime = 50)
-    
+    Record_SS <- CriterionCompute(Pi_SS, Screened_pred, Null_test, m, S_pred, Retime = 50)
+
     info <- rbind(info, list(
       FDP = Record_SS$FDP, SIM = Record_SS$SIM, Method = "SS", Algorithm = algo@name, datasetting = "REG"
     ))
-    
-    
+
+
     #---LocF---#
     TN <- Tcompute(W_cal, W_test, Null_cal, algo, h1 = 0, h2 = 0)
     Screened <- which(TN<=0.5)
     Pi_loc <- rep(1/length(Screened), length(Screened))
     Record_loc <- CriterionCompute(Pi_loc, Screened, Null_test, m, S, Retime = 50)
-    
+
     info <- rbind(info, list(
       FDP = Record_loc$FDP, SIM = Record_loc$SIM, Method = "LocF", Algorithm = algo@name, datasetting = "REG"
     ))
   }
-  
+
   return(info)
 }
 stopCluster(cl)
 
 
 ### summary
+Result <- Result[1:1800,]
 pp <- Result%>%
   group_by(Method, Algorithm, datasetting)%>%
-  dplyr::summarize(FDR = mean(FDP), SIMmean = mean(SIM), sdFDR = sd(FDP)/sqrt(length(Result[, 1])), SIMsd = sd(SIM)/sqrt(length(Result[, 1])))
+  dplyr::summarize(FDR = mean(FDP), SIMmean = mean(SIM), sdFDR = sd(FDP)/sqrt(100), SIMsd = sd(SIM)/sqrt(100))
 pp
 
 
@@ -173,11 +185,11 @@ P1 <- ggplot(data = Result, aes(x = Method, y = FDP, fill = Method)) +
   geom_boxplot(alpha = 0.7) +
   scale_y_continuous(name = "FSR") +
   scale_x_discrete(name = "Method") +
-  theme_bw() +                
+  theme_bw() +
   geom_hline(aes(yintercept = alpha), colour = "#AA0000") +
-  stat_summary(mapping = aes(group = Method),                    
-               fun = "mean",                                   
-               geom = "point", shape = 23, size = 1.1, fill = "red",    
+  stat_summary(mapping = aes(group = Method),
+               fun = "mean",
+               geom = "point", shape = 23, size = 1.1, fill = "red",
                position = position_dodge(0.8)) +
   theme(plot.title = element_text(size = 14, face = "bold"),
         text = element_text(size = 12),
@@ -187,12 +199,12 @@ P1 <- ggplot(data = Result, aes(x = Method, y = FDP, fill = Method)) +
 
 P2 <- ggplot(data = Result, aes(x = Method, y = SIM, fill = Method)) +
   geom_boxplot(alpha = 0.7) +
-  scale_y_continuous(name = "ES", limits = c(0.03, 0.102)) +
+  scale_y_continuous(name = "ES") +
   scale_x_discrete(name = "Method") +
-  theme_bw() +                
-  stat_summary(mapping = aes(group = Method),                    
-               fun = "mean",                                   
-               geom = "point", shape = 23, size = 1.1, fill = "red",    
+  theme_bw() +
+  stat_summary(mapping = aes(group = Method),
+               fun = "mean",
+               geom = "point", shape = 23, size = 1.1, fill = "red",
                position = position_dodge(0.8)) +
   theme(plot.title = element_text(size = 14, face = "bold"),
         text = element_text(size = 12),

@@ -9,7 +9,7 @@ much as possible. The key ingredients of our method are the use of predictive in
 # Contents
 
 - **R**: Package function definitions.
-- **man**: Package .Rd fils.
+- **man**: Package .Rd files.
 - **Simulation Codes**: Codes for reproducing the illustration example plot and the simulated results.
 - **Real-data**: Codes for reproducing the real-data experiment and the data set used.
 

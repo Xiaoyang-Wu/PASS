@@ -24,17 +24,50 @@ library(PASS)
 For direct implementation of the method, just use the `PASS_sampling` function in the package and all arguments needed can be found in the help documentation `?PASS_sampling`.  
 Note that the `algo` argument is of type `class` and should be defined by the user depending on the specific fitting and predicting algorithm chosen. Here is an example for the definition of the algorithm class:
 ```
-#SVM regression  
-setClass("SVM-R", slots = list(name = "character"),  
-         prototype = list(name = "SVM-R"))  
-setMethod("fitting", "SVM-R", function(obj, X, Y, lambda){  
-  datawork <- data.frame(X, y = Y)  
-  ksvm(y~., data = datawork, C = lambda)  
-})  
-setMethod("Pred", "SVM-R", function(obj, model, X_test){  
-  predict(model, X_test)  
-})  
-algo <- new('SVM-R')  
-Sampling_results <- PASS_sampling(..., algo = algo, ...)
+library(PASS)
+###random forest classification
+setClass("RFc", slots = list(name = "character"), prototype = list(name = "RFc"))
+setMethod("fitting", "RFc", function(obj, X_rest, Y_rest, lambda){
+  randomForest(X_rest, as.factor(Y_rest), ntree = lambda)
+})
+setMethod("Pred", "RFc", function(obj, model, X_test, type = 'decision'){
+  if(type=="class"){
+    predraw <- as.numeric(as.character(predict(model, X_test)))
+  }else{
+    predraw <- predict(model, X_test, type = "prob")[, 2]
+  }
+  return(predraw)
+})
+
+
+N <- 5000 ### unlabeled data size
+n <- 400 ### labeled data size
+alpha <- 0.1 ### pre-specified FSR level
+K <- 5 ### number of folds for PASSC
+n_train <- round(n/2) ### training set size for single splitting
+n_cal <- n-n_train ### calibration set size for single splitting
+d <- 4 ### dimension of covariates
+sgm <- 1 ### sigma value of the RBF criterion
+algo <- new('RFc') ### algorithm used for fitting and prediction
+lambda <- 500 ### number of trees
+m <- 200 ### sampling budget
+g <- 'RBF' ### similarity criterion, RBF or COS
+sigma <- 0.8 ### proportion of null individuals
+
+n1 <- round((n+N)*sigma)
+X1 <- mvrnorm(n1, c(rep(3, round(d/4)), rep(0, d-round(d/4))), diag(rep(1, d)))
+X2 <- mvrnorm((n+N)-n1, c(rep(0, d/2), rep(2, d/2)), diag(rep(1, d)))
+X <- rbind(X1, X2)
+data <- data.frame(x = X, y = c(rep(-1, n1), rep(1, (n+N)-n1)))
+data <- data[sample(1:dim(data)[1], dim(data)[1]),]
+region <- list(type = "==A", v = -1)
+data_label <- data[1:n,]
+data_test <- data[(n+1):(n+N),]
+X_label <- as.matrix(data_label[colnames(data_label)[-d-1]])
+Y_label <- as.matrix(data_label$y)
+X_test <- as.matrix(data_test[colnames(data_test)[-d-1]])
+Null_label <- which(Y_label==-1)
+
+Sampling_results <- PASS_sampling(X_label, Y_label, X_test, Null_label, g, m, alpha, algo = algo, lambda = lambda, classification = TRUE, region = region)
 ```
 The function `fitting` should take the algorithm class object, a covariate matrix, the corresponding response vector and optionally a tuning parameter as inputs and outputs a model object. The function `Pred` should take the algorithm class object, the fitted model object and a new covariate matrix as inputs and outputs a vector or prediction values.

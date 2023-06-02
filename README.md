@@ -29,7 +29,7 @@ library(MASS)
 library(randomForest)
 
 setGeneric("fitting", function(obj, ...) standardGeneric("fitting"))
-setGeneric("Pred", function(obj, ...) standardGeneric("pred"))
+setGeneric("Pred", function(obj, ...) standardGeneric("Pred"))
 ###random forest classification
 setClass("RFc", slots = list(name = "character"), prototype = list(name = "RFc"))
 setMethod("fitting", "RFc", function(obj, X_rest, Y_rest, lambda){

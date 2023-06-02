@@ -22,7 +22,7 @@ library(PASS)
 
 # Notes on usage of the PASS package
 For direct implementation of the method, just use the `PASS_sampling` function in the package and all arguments needed can be found in the help documentation `?PASS_sampling`.  
-Note that the `algo` argument is of type `class` and should be defined by the user depending on the specific fitting and predicting algorithm chosen. Here is an example for the definition of the algorithm class:
+Note that the `algo` argument is of type `class` and should be defined by the user depending on the specific fitting and predicting algorithm chosen. Here is an example code:
 ```
 library(PASS)
 library(MASS)

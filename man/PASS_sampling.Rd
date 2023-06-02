@@ -14,15 +14,18 @@ PASS_sampling(
   alpha,
   algo,
   cv = FALSE,
+  shift = FALSE,
   K = 5,
   lambda = 500,
-  classification = FALSE
+  classification = FALSE,
+  region,
+  tau = 0.5
 )
 }
 \arguments{
 \item{X_label}{Matrix. The covariate matrix of the labeled data.}
 
-\item{Y_label}{Vector. Responses of the labeled data.}
+\item{Y_label}{Vector. Responses of the labeled data. Should take +-1 for binary Y.}
 
 \item{X_test}{Matrix. The covariate matrix of the unlabeled data.}
 
@@ -38,11 +41,17 @@ PASS_sampling(
 
 \item{cv}{Logical. Set to TRUE if PASSC is to be implemented. FALSE as default.}
 
+\item{shift}{Logical. If there is possible distribution shift between labelled and unlabelled data then set this to TRUE. FALSE as default.}
+
 \item{K}{Integral. Number of folds used for PASSC. Five as default.}
 
 \item{lambda}{Numeric. The tuning parameter used for fitting the predictive model.}
 
 \item{classification}{Logical. If the response is discrete then set this to TRUE. FALSE as default.}
+
+\item{region}{List. Should contain two attributes. The first attribute named 'type' takes values among "==A", "<=A", ">=B", "<=A|>=B" and ">=A&<=B". This characterizes the shape of the null region, where "==A" corresponds to classification settings. The second attribute named "v" characterizes the boundary of the null region. It should be a single number or a vector of length 2. If Y is binary then set v=-1.}
+
+\item{tau}{Numeric. Threshold of the Storey estimation of the signal proportion under distribution shift.}
 }
 \value{
 A list containing a vector of sampling probabilities supported on the unlabeled data set and a vector indicating which individuals are sampled.

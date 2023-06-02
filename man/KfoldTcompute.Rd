@@ -13,13 +13,16 @@ KfoldTcompute(
   K,
   lambda,
   algo,
-  classification = FALSE
+  classification = FALSE,
+  shift = FALSE,
+  region = NULL,
+  tau = 0.5
 )
 }
 \arguments{
 \item{X_label}{Matrix. The covariate matrix of the labeled data.}
 
-\item{Y_label}{Vector. Responses of the labeled data.}
+\item{Y_label}{Vector. Responses of the labeled data. Should take +-1 for binary Y.}
 
 \item{X_test}{Matrix. The covariate matrix of the unlabeled data.}
 
@@ -34,6 +37,12 @@ KfoldTcompute(
 \item{algo}{Class. A class specifying the algorithms used for fitting and prediction. The class should be well-defined with two functions. One named "fitting", which takes algorithm class, covariate matrix, responses and possibly a tuning parameter as inputs and outputs a model object. The other named "Pred", which takes algorithm class, a model object and a new covariate matrix as inputs and outputs a vector of predciton values.}
 
 \item{classification}{classification Logical. If the response is discrete then set this to TRUE. FALSE as default.}
+
+\item{shift}{Logical. If there is possible distribution shift between labelled and unlabelled data then set this to TRUE. FALSE as default.}
+
+\item{region}{List. Should contain two attributes. The first attribute named 'type' takes values among "==A", "<=A", ">=B", "<=A|>=B" and ">=A&<=B". This characterizes the shape of the null region, where "==A" corresponds to classification settings. The second attribute named "v" characterizes the boundary of the null region. It should be a single number or a vector of length 2. If Y is binary then set v=-1.}
+
+\item{tau}{Numeric. Threshold of the Storey estimation of the signal proportion under distribution shift.}
 }
 \value{
 Vector containing the estimated local FDR of the unlabeled individuals under PASSC.

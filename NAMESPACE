@@ -2,6 +2,7 @@
 
 export(KfoldTcompute)
 export(PASS_sampling)
+export(PASS_sampling_pred)
 export(Scompute)
 export(SolvePi)
 export(Tcompute)

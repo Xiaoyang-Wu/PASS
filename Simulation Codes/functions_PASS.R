@@ -47,7 +47,7 @@ NullIndex <- function(y, Value){
 
 
 ClassPred <- function(pred, algo){
-  if(algo@name=='RFc'|algo@name=='NN'){
+  if(algo@name=='RFc'|algo@name=='NN'|algo@name=='GLM'){
     return(2*as.numeric(pred>0.5)-1)
   }else if(algo@name=='SVM'){
     return(2*as.numeric(pred>0)-1)
@@ -73,12 +73,12 @@ SolvePi <- function(TN, m, S, Screened, alpha, constraint = TRUE){
   c <- rep(0, length(Screened))
   if(constraint){
     dT <- diag((1-TN)[Screened])
-    H <- 2*dT%*%S[Screened, Screened]%*%dT
+    H <- 2*dT%*%S%*%dT
     A <- rbind(rep(1, length(Screened)), TN[Screened])
     b <- c(1, 0)
     r <- c(0, alpha)
   }else{
-    H <- 2*S[Screened, Screened]
+    H <- 2*S
     A <- rep(1, length(Screened))
     b <- c(1)
     r <- c(0)
@@ -147,7 +147,7 @@ L2Normsq <- function(x){
 }
 
 
-Scompute <- function(g, Z_test, d){
+Scompute <- function(g, Z_test, d, sgm){
   if(g=='RBF'){
     S <- Z_test%*%t(Z_test)
     for (i in 1:dim(Z_test)[1]){
@@ -158,7 +158,7 @@ Scompute <- function(g, Z_test, d){
         S[i,] <- apply((Z_test[i]-t(Z_test)), 2, L2Normsq)
       }
     }
-    S <- exp(-S)
+    S <- exp(-S/sgm^2)
   }
   if(g=='COS'){
     S <- (Z_test/sqrt(apply(Z_test, 1, L2Normsq)))%*%t(Z_test/sqrt(apply(Z_test, 1, L2Normsq)))
@@ -169,10 +169,12 @@ Scompute <- function(g, Z_test, d){
 
 CriterionCompute <- function(Pi, Index, Null_test, m, S, Retime = 1){
   record <- sapply(1:Retime, function(i){
-    Sampled <- sample(Index, m, replace = TRUE, Pi)
+    quasi_Sampled <- sample(1:length(Index), m, replace = TRUE, Pi)
+    Sampled <- Index[quasi_Sampled]
     FDP <- sum(is.element(Sampled, Null_test))/m
     H1 <- Sampled[!is.element(Sampled, Null_test)]
-    SIM <- sum(S[H1, H1])/sum(!is.element(Sampled, Null_test))^2
+    H1s <- quasi_Sampled[!is.element(Sampled, Null_test)]
+    SIM <- sum(S[H1s, H1s])/sum(!is.element(Sampled, Null_test))^2
     return(c(FDP, SIM))
     })
   result <- apply(record, 1, mean)

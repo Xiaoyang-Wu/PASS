@@ -61,7 +61,6 @@ Alter_test <- setdiff(1:length(data_test$y), Null_test)
 
 ### rescaling the unlabeled covariates and compute the similarity matrix
 X_test_scale <- scale(X_test, center = TRUE, scale = TRUE)
-S <- Scompute(g, X_test_scale, d)
 
 
 ### model fitting and prediction
@@ -75,6 +74,7 @@ W_test_whole <- Pred(algo, model_whole, X_test)
 ### implementation of PASS
 TN <- Tcompute(W_cal, W_test, Null_cal, algo, h1 = 0, h2 = 0, IsSame = T, IsCali = T)
 Screened <- which(TN<=0.5)
+S <- Scompute(g, X_test_scale[Screened,], d, sgm = 1)
 Pi_PASS <- SolvePi(TN, m, S, Screened = Screened, alpha)
 Sampled <- sample(Screened, m, replace = TRUE, Pi_PASS)
 
@@ -88,12 +88,12 @@ Type <- factor(Type, levels = c("Not-of-interest", "Of-interest", "Falsely-sampl
 dataP <- data.frame(X_test1 = X_test[, 1], X_test2 = X_test[, 2], Types = Type)
 dataP <- dataP[order(dataP$Types),]
 
-P <- dataP %>% 
+P <- dataP %>%
   ggplot(aes(x = X_test1, y = X_test2, color = Types, size = Types, shape = Types)) +
   geom_point() +
   scale_y_continuous(name = "X2", position = "left") +
   scale_x_continuous(name = "X1") +
-  scale_color_manual(values = c('sandybrown', "lightgreen", "red", "darkgreen"), name = "", 
+  scale_color_manual(values = c('sandybrown', "lightgreen", "red", "darkgreen"), name = "",
                      labels = c("Not-of-interest", "Of-interest", "Falsely-sampled", "Correctly-sampled")) +
   scale_size_manual(values = c(0.5, 0.5, 1.5, 1.5), labels = c("Not-of-interest", "Of-interest", "Falsely-sampled", "Correctly-sampled")) +
   scale_shape_manual(values = c(16, 16, 17, 16), name = "", labels = c("Not-of-interest", "Of-interest", "Falsely-sampled", "Correctly-sampled")) +

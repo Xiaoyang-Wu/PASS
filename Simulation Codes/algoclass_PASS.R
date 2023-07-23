@@ -84,7 +84,7 @@ setClass("SVM-R", slots = list(name = "character"),
          prototype = list(name = "SVM-R"))
 setMethod("fitting", "SVM-R", function(obj, X, Y, lambda){
   datawork <- data.frame(X, y = Y)
-  ksvm(y~., data = datawork, C = lambda)
+  ksvm(y~., data = datawork, C = 1)
 })
 setMethod("Pred", "SVM-R", function(obj, model, X_test, type = "decision"){
   predict(model, X_test)
@@ -96,7 +96,7 @@ setClass("SVM", slots = list(name = "character"),
          prototype = list(name = "SVM"))
 setMethod("fitting", "SVM", function(obj, X, Y, lambda){
   datawork <- data.frame(X, y = as.factor(Y))
-  ksvm(y~., data = datawork, type = "C-svc", C = lambda)
+  ksvm(y~., data = datawork, type = "C-svc", C = 1)
 })
 setMethod("Pred", "SVM", function(obj, model, X_test, type = "decision"){
   if(type=="class"){

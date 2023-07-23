@@ -215,3 +215,4 @@ P2 <- ggplot(data = Result, aes(x = Method, y = SIM, fill = Method)) +
 PP <- ggarrange(P1, P2)
 PPR <- annotate_figure(PP, top = text_grob("Scenario A", color = "black", face = "bold", size = 14))
 PPR
+

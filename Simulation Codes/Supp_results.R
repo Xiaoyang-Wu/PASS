@@ -408,7 +408,7 @@ K <- 5 ### number of folds for PASSC
 n_train <- round(n/2) ### training set size for single splitting
 n_cal <- n-n_train ### calibration set size for single splitting
 d <- 4 ### dimension of covariates
-sgmarray <- c('0.5', '1', '2', '5', '10') ### sigma value of the RBF criterion
+sgmarray <- c('1', '2', '5', '10') ### sigma value of the RBF criterion
 algoarray <- c(new('RFc')) ### algorithms used for fitting and prediction
 lambda <- 500 ### hyper-parameter used for different algorithms
 m <- 200 ### sampling budget
@@ -562,13 +562,12 @@ Result$datasetting <- "Setting B"
 Result$Algorithm[Result$Algorithm=="RFc"] <- "RF"
 Result$Method <- factor(Result$Method, levels = c("PASS", "PASSC", "SS", "SSD", "LocF", "CP"))
 Result$Algorithm <- factor(Result$Algorithm, levels = c("RF", "SVM", "NN"))
-Result$sgm[Result$sgm=="0.5"] <- 'aaa'
-Result$sgm[Result$sgm=='1'] <- 'bbb'
-Result$sgm[Result$sgm=='2'] <- 'ccc'
-Result$sgm[Result$sgm=='5'] <- 'ddd'
-Result$sgm[Result$sgm=='10'] <- 'eee'
-Result$sgm <- factor(Result$sgm, levels = c('aaa', 'bbb', 'ccc', 'ddd', 'eee'))
-sgmname <- c(aaa = "sigma = 0.5", bbb = "sigma = 1", ccc = "sigma = 2", ddd ="sigma = 5", eee ="sigma = 10")
+Result$sgm[Result$sgm=='1'] <- 'aaa'
+Result$sgm[Result$sgm=='2'] <- 'bbb'
+Result$sgm[Result$sgm=='5'] <- 'ccc'
+Result$sgm[Result$sgm=='10'] <- 'ddd'
+Result$sgm <- factor(Result$sgm, levels = c('aaa', 'bbb', 'ccc', 'ddd'))
+sgmname <- c(aaa = "sigma = 1", bbb = "sigma = 2", ccc = "sigma = 5", ddd ="sigma = 10")
 
 P1 <- ggplot(data = Result, aes(x = Method, y = FDP, fill = Method)) +
   geom_boxplot(alpha = 0.7) +
@@ -632,22 +631,6 @@ Tcompute <- function(W_cal, W_test, Null_cal, classification = FALSE){
   return(TN)
 }
 
-KfoldTcompute <- function(X_label, Y_label, X_test, Null_label, W_test_whole, K, lambda, algo, classification = FALSE){
-  Folds <- caret::createFolds(1:length(Y_label), K)
-  W_cross <- rep(0, length(Y_label))
-  for (i in 1:K) {
-    model <- fitting(algo, X_label[-Folds[[i]],], Y_label[-Folds[[i]]], lambda = lambda)
-    lens <- length(Folds[[i]])
-    if(lens==1){
-      W_cross[Folds[[i]]] <- Pred(algo, model, t(X_label[Folds[[i]],]))
-    }else{
-      W_cross[Folds[[i]]] <- Pred(algo, model, X_label[Folds[[i]],])
-    }
-  }
-  TN_cross <- Tcompute(W_cross, W_test_whole, Null_label, classification)
-  return(TN_cross)
-}
-
 ### Use default fitting for NN
 setClass("NN", slots = list(name = "character"),
          prototype = list(name = "NN"))
@@ -673,7 +656,7 @@ d <- 4 ### dimension of covariates
 sgm <- 1 ### sigma value of the RBF criterion
 algoarray <- c(new('RFc'), new('SVM'), new('NN')) ### algorithms used for fitting and prediction
 lambda <- 500 ### number of trees
-m <- 100 ### sampling budget
+m <- 150 ### sampling budget
 g <- 'RBF' ### similarity criterion, RBF or COS
 sigma <- 0.8 ### proportion of labelled null individuals
 alpUn <- 0.05 ### proportion of unlabelled non-null individuals
@@ -745,22 +728,7 @@ Result <- foreach(iter = 1:ns, .combine = "rbind", .packages = c('MASS', 'glmnet
     Record_PASS <- CriterionCompute(Pi_PASS, Screened, Null_test, m, S, Retime = 50)
 
     info <- rbind(info, list(
-      FDP = Record_PASS$FDP, SIM = Record_PASS$SIM, Method = "PASS", Algorithm = algo@name, datasetting = "CLA"
-    ))
-
-    #---PASSC---#
-    if(algo@name=='NN'){
-      TN_cv <- KfoldTcompute(X_label, (Y_label+1)/2, X_test, Null_label, W_test_whole, K, lambda, algo, classification = T)
-    }else{
-      TN_cv <- KfoldTcompute(X_label, Y_label, X_test, Null_label, W_test_whole, K, lambda, algo, classification = T)
-    }
-    Screened_cv <- which(TN_cv<=0.5)
-    S_cv <- Scompute(g, X_test_scale[Screened_cv,], d, sgm = as.numeric(sgm))
-    Pi_PASSC <- SolvePi(TN_cv, m, S_cv, Screened_cv, alpha)
-    Record_PASSC <- CriterionCompute(Pi_PASSC, Screened_cv, Null_test, m, S_cv, Retime = 50)
-
-    info <- rbind(info, list(
-      FDP = Record_PASSC$FDP, SIM = Record_PASSC$SIM, Method = "PASSC", Algorithm = algo@name, datasetting = "CLA"
+      FDP = Record_PASS$FDP, SIM = Record_PASS$SIM, Method = "rPASS", Algorithm = algo@name, datasetting = "CLA"
     ))
 
     #---CP---#
@@ -823,7 +791,7 @@ pp
 ### plotting
 Result$datasetting <- "Setting B"
 Result$Algorithm[Result$Algorithm=="RFc"] <- "RF"
-Result$Method <- factor(Result$Method, levels = c("PASS", "PASSC", "SS", "SSD", "LocF", "CP"))
+Result$Method <- factor(Result$Method, levels = c("PASS", "rPASS", "SS", "SSD", "LocF", "CP"))
 Result$Algorithm <- factor(Result$Algorithm, levels = c("RF", "SVM", "NN", "GLM"))
 
 P1 <- ggplot(data = Result, aes(x = Method, y = FDP, fill = Method)) +

@@ -18,6 +18,23 @@ DataSplit <- function(data, n, n_test, n_cal, n_rest){
 }
 
 
+Pvalue <- function(W_cal, W_test, Null_cal, classification = F){
+  h2 <- density(W_test)$bw
+  if(classification){
+    h1 <- h2
+  }
+  f0 <- kde(W_cal[Null_cal], h = h1, eval.points = W_test)
+  f <- kde(W_cal, h = h2, eval.points = W_test)
+  Likelihood_test=f0$estimate/f$estimate
+
+  f0 <- kde(W_cal[Null_cal], h = h1, eval.points = W_cal)
+  f <- kde(W_cal, h = h2, eval.points = W_cal)
+  Likelihood_cali <- f0$estimate/f$estimate
+  return(confomalPvalue(-Likelihood_cali, -Likelihood_test, Null_cal, Value))
+}
+
+
+
 confomalPvalue <- function(W_cal, W_test, Null_cal, Value){
   Phi_cal <- -ScoreCompute(W_cal, Value)
   Phi_test <- -ScoreCompute(W_test, Value)
@@ -85,13 +102,13 @@ SolvePi <- function(TN, m, S, Screened, alpha, constraint = TRUE){
   }
   l <- rep(0, length(Screened))
   u <- rep(1/m, length(Screened))
-  
+
   Solu <- ipop(c, H, A, b, l, u, r)
-  
+
   Pi <- Solu@primal
   Pi[Pi<1e-8] <- 0
   Pi <- Pi/sum(Pi)
-  
+
   return(Pi)
 }
 
@@ -108,8 +125,8 @@ Tcompute <- function(W_cal, W_test, Null_cal, algo, h1 = 0, h2 = 0, IsSame = FAL
   }
   f0 <- kde(W_cal[Null_cal], h = h1, eval.points = W_test)
   f <- kde(W_cal, h = h2, eval.points = W_test)
-  phat <- 1-length(Null_cal)/length(W_cal)
-  TN <- (1-phat)*f0$estimate/f$estimate
+  qhat <- 1-length(Null_cal)/length(W_cal)
+  TN <- (1-qhat)*f0$estimate/f$estimate
   TN[which(TN>1)] <- 1
   TN[which(TN<0)] <- 0
   if(IsCali){
@@ -135,10 +152,33 @@ KfoldTcompute <- function(X_rest, Y_rest, X_test, Null_rest, W_test_whole, K, la
       W_cross[Folds[[i]]] <- Pred(algo, model, t(X_rest[Folds[[i]],]))
     }else{
       W_cross[Folds[[i]]] <- Pred(algo, model, X_rest[Folds[[i]],])
-    } 
+    }
   }
   TN_cross <- Tcompute(W_cross, W_test_whole, Null_rest, algo, h1, h2, IsSame, IsCali)
   return(TN_cross)
+}
+
+
+rTcompute <- function(W_cal, W_test, Null_cal, classification = FALSE){
+  h1 <- stats::density(W_cal[Null_cal])$bw
+  h2 <- stats::density(W_test)$bw
+  if(classification){
+    h2 <- h1
+  }
+  f0 <- ks::kde(W_cal[Null_cal], h = h1, eval.points = W_test)
+  f <- ks::kde(W_test, h = h2, eval.points = W_test)
+  TN <- (1-qhat)*f0$estimate/f$estimate
+  TN[which(TN>1)] <- 1
+  TN[which(TN<0)] <- 0
+  if(classification){
+    Ind <- order(W_test)
+    TNW <- TN[Ind]
+    for (i in (length(TNW)-20):1) {
+      if(TNW[i]<TNW[i+1]){TNW[i] <- TNW[i+1]}
+    }
+    TN[Ind] <- TNW
+  }
+  return(TN)
 }
 
 

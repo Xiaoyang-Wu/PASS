@@ -71,7 +71,7 @@ Result <- foreach(iter = 1:ns, .combine = "rbind", .packages = c('MASS', 'glmnet
   Alter_test <- setdiff(1:length(data_test$y), Null_test)
 
 
-  ### rescaling the unlabeled covariates and compute the similarity matrix
+  ### rescaling the unlabeled covariates
   X_test_scale <- scale(X_test, center = TRUE, scale = TRUE)
 
 

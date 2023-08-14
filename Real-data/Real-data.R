@@ -88,7 +88,7 @@ Result <- foreach(iter = 1:ns, .combine = "rbind", .packages = c('MASS', 'glmnet
   Alter_test <- setdiff(1:length(data_test$y), Null_test)
   
   
-  ### rescaling the unlabeled covariates and compute the similarity matrix
+  ### rescaling the unlabeled covariates
   X_test_scale <- scale(X_test, center = TRUE, scale = TRUE)
   X_test_scale[, 7:13] <- X_test_scale[, 7:13]/7
   X_test_scale[, 14:29] <- X_test_scale[, 14:29]/16
@@ -424,6 +424,5 @@ Page3 <- pp3%>%ggplot(aes(x = class, y = va, fill = type)) +
 
 PPage <- ggarrange(Page1, Page3, Page2, common.legend = T, ncol = 3)
 PPage
-
 
 
